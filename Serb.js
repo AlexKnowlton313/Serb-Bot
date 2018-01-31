@@ -4,15 +4,21 @@ const Discord = require('discord.js');
 // Create instance of Discord client
 const client = new Discord.Client();
 
+// Import config file
+const config = require("./config.json");
+
 // Make sure our bot is ready, commands will not execute until Serb is ready
 client.on('ready', () => {
 	console.log("Let's drink comrades!");
 });
 
-// Simple listener for messages
+// Listener for messages
 client.on('message', message => {
+	// if our message doesn't start with '!' then do nothing
+	if (!message.content.startsWith(config.prefix) || message.author.bot) return;
+
 	console.log("got a message comrades!");
-	if (message.content === 'ping') {
+	if (message.content.startsWith(prefix + 'ping')) {
 		message.channel.send('pong');
 	}
 });
@@ -32,4 +38,4 @@ client.on('guildMemeberAdd', member => {
 })
 
 // Log the bot in using our token: https://discordapp.com/developers/applications/me/408384681004761108
-client.login("NDA4Mzg0NjgxMDA0NzYxMTA4.DVPclQ.pfuIKtAgGfeauxIkouurffv7v00");
+client.login(config.token);
