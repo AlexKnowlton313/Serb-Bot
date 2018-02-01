@@ -1,11 +1,13 @@
-// Import discord.js module
+const { WorldOfTanks } = require('wargamer');
 const Discord = require('discord.js');
+const config = require("./config.json");
+
+// Import discord.js module
 
 // Create instance of Discord client
 const client = new Discord.Client();
-
-// Import config file
-const config = require("./config.json");
+// Create instance of wot
+const wot = new WorldOfTanks({realm: 'na', applicationId: config.WotID});
 
 // Make sure our bot is ready, commands will not execute until Serb is ready
 client.on('ready', () => {
@@ -26,6 +28,22 @@ client.on('message', message => {
 		if (args.length === 0) {
 			message.channel.send("The `!stats` command must be followed by a username");
 		} else {
+			// get the account id by username
+			wot.get('account/list', { search: args[0] }).then((response) => {
+				// get the account stats by username
+				wot.get('account/info', { account_id: response.data[0].account_id }).then((response) => {
+					console.log(response.data);
+				}).catch((error) => {
+					console.log(error.message);
+					message.reply(`I was unable to find WoT data for ${args[0]}`);
+					return;
+				});
+			}).catch((error) => {
+				console.log(error.message);
+				message.reply(`I was unable to find WoT data for ${args[0]}`);
+				return;
+			});
+
 			message.channel.send(args[0]);
 		}
 	}
@@ -44,7 +62,7 @@ client.on('message', message => {
 
 			let reason = args.slice(1).join(" ");
 			kickMember.kick(reason).then(kickedMember => {
-				message.reply('${kickedMember.user.username} was kicked.');
+				message.reply(`${kickedMember.user.username} was kicked.`);
 			});
 		}
 	}
