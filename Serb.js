@@ -17,9 +17,36 @@ client.on('message', message => {
 	// if our message doesn't start with '!' then do nothing
 	if (!message.content.startsWith(config.prefix) || message.author.bot) return;
 
-	console.log("got a message comrades!");
-	if (message.content.startsWith(prefix + 'ping')) {
-		message.channel.send('pong');
+	// separate our message into command and args
+	const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+	const command = args.shift().toLowerCase();
+
+	// Check stats command. return if there are no args
+	if (command === 'stats') {
+		if (args.length === 0) {
+			message.channel.send("The `!stats` command must be followed by a username");
+		} else {
+			message.channel.send(args[0]);
+		}
+	}
+
+	// simple kick command
+	if (command === 'kick') {
+		// only users with the kick members permission may kick members
+		if (message.guild.me.hasPermission("KICK_MEMBERS")) {
+			let kickMember = message.mentions.members.first();
+
+			// if no member is mentioned
+			if (!kickMember) {
+				message.reply('mention a user to kick them.');
+				return;
+			}
+
+			let reason = args.slice(1).join(" ");
+			kickMember.kick(reason).then(kickedMember => {
+				message.reply('${kickedMember.user.username} was kicked.');
+			});
+		}
 	}
 });
 
