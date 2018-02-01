@@ -46,7 +46,10 @@ client.on('message', message => {
 					const gamesPlayed = gameStatistics.battles;
 
 					// win percentage
-					const winPercentage = (gameStatistics.wins / gamesPlayed).toFixed(2);
+					const winPercentage = `${(gameStatistics.wins / gamesPlayed * 100).toFixed(2)}%`;
+
+					// survived percentage
+					const survivedPercentage = `${(gameStatistics.survived_battles / gamesPlayed * 100).toFixed(2)}%`;
 
 					// average damage
 					const averageDamage = (gameStatistics.damage_dealt / gamesPlayed).toFixed(2);
@@ -57,7 +60,8 @@ client.on('message', message => {
 					const wotStats = new Discord.RichEmbed()
 						.setAuthor(`WoT Statistics for ${args[0]}`, message.author.avatarURL)
 						.addField(`Total Games Played`, gamesPlayed, true)
-						.addField(`Win Percentage`, winPercentage, true)
+						.addField(`Win Rate`, winPercentage, true)
+						.addField(`Survival Rate`, survivedPercentage, true)
 						.addField(`Kills Per Game`, averageKills, true)
 						.addField(`Damage Per Game`, averageDamage, true)
 						.addField(`Last battle`, formatDate(lastBattleTime), true)
