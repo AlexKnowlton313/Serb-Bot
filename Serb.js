@@ -11,6 +11,13 @@ if (fs.existsSync("./config.json")) {
 	env = require("./config.json");
 }
 
+// Fix for Heroku
+var http = require('http'); 
+http.createServer(function (req, res) { 
+	res.writeHead(200, {'Content-Type': 'text/plain'}); 
+	res.send('it is running\n'); 
+}).listen(process.env.PORT || 5000);
+
 // Create instance of Discord client
 const client = new Discord.Client();
 // Create instance of wot
