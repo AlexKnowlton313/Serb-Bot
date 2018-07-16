@@ -2,6 +2,7 @@ const { WorldOfTanks } = require('wargamer');
 const Discord = require('discord.js');
 const config = require("./config.json");
 const request = require('request');
+const wotUser = require("./wotUser.js");
 
 // Import discord.js module
 
@@ -10,20 +11,18 @@ const client = new Discord.Client();
 // Create instance of wot
 const wot = new WorldOfTanks({realm: 'na', applicationId: config.WotID});
 
-// CURRENT VERSION OF WN8 EXPECTED VALUES
-const wn8Version = 30;
-
 // WN8 values in a dictionary
 const wn8Values = {};
 
 // Make sure our bot is ready, commands will not execute until Serb is ready
+// https://static.modxvm.com/wn8-data-exp/json/wn8exp.json
 client.on('ready', () => {
-	console.log(`Downloading expected tank values version ${wn8Version}`);
-	request(`http://www.wnefficiency.net/exp/expected_tank_values_${wn8Version}.json`, function (error, response, body) {
+	console.log(`Downloading expected tank values from https://static.modxvm.com/wn8-data-exp/json/wn8exp.json`);
+	request(`https://static.modxvm.com/wn8-data-exp/json/wn8exp.json`, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			var wn8JSON = JSON.parse(body).data;
+			const wn8JSON = JSON.parse(body).data;
 
-			for (var wn8Value of wn8JSON) {
+			for (const wn8Value of wn8JSON) {
 				wn8Values[wn8Value.IDNum] = serializeWn8(wn8Value);
 			}
 
@@ -40,69 +39,52 @@ client.on('message', message => {
 	if (!message.content.startsWith(config.prefix) || message.author.bot) return;
 
 	// separate our message into command and args
-	var args = message.content.slice(config.prefix.length).trim().split(/ +/g);
-	var command = args.shift().toLowerCase();
+	const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+	const command = args.shift().toLowerCase();
 
 	// Check stats command. return if there are no args
 	if (command === 'stats') {
 		if (args.length === 0) {
 			message.channel.send("The `!stats` command must be followed by a username");
 		} else {
-			message.channel.send(`Fetching stats for ${args[0]}, one moment`);
-			// get the account id by username
-			wot.get('account/list', { search: args[0] }).then((userList) => {
-				var accountID = userList.data[0].account_id;
-				// get the account stats by username
-				wot.get('account/info', { account_id: accountID }).then((userInfo) => {
-					var userStatistics = userInfo.data[Object.keys(userInfo.data)[0]];
-					var gameStatistics = userStatistics.statistics.all;
-					console.log(gameStatistics);
+			const user = new wotUser(args[0]);
+			message.channel.send(`Fetching stats for ${user.userName}, one moment`);
 
-					// last battle played
-					var lastBattleTime = new Date(0); // The 0 there is the key, which sets the date to the epoch
-					lastBattleTime.setUTCSeconds(userStatistics.last_battle_time);
+			// get the account id for statistics by username
+			wot.get('account/list', { search: user.userName }).then((userList) => {
+				const accountID = userList.data[0].account_id;
 
-					// games played
-					var gamesPlayed = gameStatistics.battles;
-
-					// win percentage
-					var winPercentage = `${(gameStatistics.wins / gamesPlayed * 100).toFixed(2)}%`;
-
-					// survived percentage
-					var survivedPercentage = `${(gameStatistics.survived_battles / gamesPlayed * 100).toFixed(2)}%`;
-
-					// average damage
-					var averageDamage = (gameStatistics.damage_dealt / gamesPlayed).toFixed(2);
-
-					// average kills
-					var averageKills = (gameStatistics.frags / gamesPlayed).toFixed(2);
-
-					// total trees cut
-					var treesCut = userStatistics.trees_cut;
-
-					// rich embed that we send
-					var wotStats = new Discord.RichEmbed()
-						.setAuthor(`WoT Statistics for ${args[0]}`, message.author.avatarURL)
-						.addField(`Total Games Played`, gamesPlayed, true)
-						.addField(`Win Rate`, winPercentage, true)
-						.addField(`Survival Rate`, survivedPercentage, true)
-						.addField(`Kills Per Game`, averageKills, true)
-						.addField(`Damage Per Game`, averageDamage, true)
-						.addField(`Last Battle`, formatDate(lastBattleTime), true)
-						.setColor([219, 16, 41])
-						.setFooter(`${treesCut} trees cut`)
-						.setTimestamp();
-
-					// send the embed
-					message.channel.send({ embed: wotStats });
+				// get the account stats by userID
+				const userPromise = wot.get('account/info', { account_id: accountID }).then((userInfo) => {
+					user.setUserStatistics(userInfo);
+					return null;
 				}).catch((error) => {
-					console.log(error.message);
-					message.reply(`I was unable to find WoT data for ${args[0]}`);
-					return;
+					console.log(error);
+					message.reply(`I was unable to find WoT statistics for ${user.userName}`);
+					return "error";
+				});
+
+				// get the account tank statistics by userID
+				const tankPromise = wot.get('account/tanks', { account_id: accountID }).then((tankInfo) => {
+					user.setTankStatistics(tankInfo, wn8Values);
+					return null;
+				}).catch((error) => {
+					console.log(error);
+					message.reply(`I was unable to find tank statistics for ${user.userName}`);
+					return "error";
+				});
+
+				Promise.all([userPromise, tankPromise]).then((values) => {
+					if (values.includes("error")) {
+						message.reply(`Wargaming's API had a hiccup, try again!`);
+					} else {
+						user.calculateWN8();
+						sendStatisticsMessageForUser(user, message);
+					}
 				});
 			}).catch((error) => {
-				console.log(error.message);
-				message.reply(`I was unable to find WoT data for ${args[0]}`);
+				console.log(error);
+				message.reply(`I was unable to find WoT data for ${user.userName}`);
 				return;
 			});
 		}
@@ -112,7 +94,7 @@ client.on('message', message => {
 	if (command === 'kick') {
 		// only users with the kick members permission may kick members
 		if (message.guild.me.hasPermission("KICK_MEMBERS")) {
-			var kickMember = message.mentions.members.first();
+			const kickMember = message.mentions.members.first();
 
 			// if no member is mentioned
 			if (!kickMember) {
@@ -120,7 +102,7 @@ client.on('message', message => {
 				return;
 			}
 
-			var reason = args.slice(1).join(" ");
+			const reason = args.slice(1).join(" ");
 			kickMember.kick(reason).then(kickedMember => {
 				message.reply(`${kickedMember.user.username} was kicked.`);
 			});
@@ -144,32 +126,67 @@ client.on('guildMemeberAdd', member => {
 	member.addRole(proletarianRole).catch(console.error);
 })
 
-// date formatter
-function formatDate(date) {
-	const monthNames = [
-		"January", "February", "March",
-		"April", "May", "June", "July",
-		"August", "September", "October",
-		"November", "December" ];
+function sendStatisticsMessageForUser(user, message) {
+	const WN8 = fixToTwo(user.WN8);
+	const avgWinRate = formatPercentages(user.avgWinRate);
+	const avgSurvivalRate = formatPercentages(user.avgSurvivalRate);
+	const avgFrag = fixToTwo(user.avgFrag);
+	const avgDmg = fixToTwo(user.avgDmg);
 
-	var day = date.getDate();
-	var monthIndex = date.getMonth();
-	var year = date.getFullYear();
+	let RGB = [];
 
-	return monthNames[monthIndex] + ' ' + day + ', ' + year;
+	if (WN8 < 300) { RGB = [145, 15, 20]; } else
+	if (WN8 < 449) { RGB = [203, 53, 56]; } else
+	if (WN8 < 649) { RGB = [202, 121, 29]; } else
+	if (WN8 < 899) { RGB = [203, 183, 39]; } else
+	if (WN8 < 1199) { RGB = [132, 154, 47]; } else
+	if (WN8 < 1599) { RGB = [78, 114, 43]; } else
+	if (WN8 < 1999) { RGB = [68, 153, 189]; } else
+	if (WN8 < 2449) { RGB = [60, 116, 196]; } else
+	if (WN8 < 2899) { RGB = [120, 66, 180]; } else
+	{ RGB = [64, 22, 110]; }
+
+	// rich embed that we send
+	const wotStats = new Discord.RichEmbed()
+		.setAuthor(`Stats for ${user.userName}:`)
+		.addField(`-----------------------`, `-----------------------`, true)
+		.addField(`WN8`, WN8, true)
+		.addField(`-----------------------`, `-----------------------`, true)
+		.addField(`Total Games Played`, user.gamesPlayed, true)
+		.addField(`Win Rate`, avgWinRate, true)
+		.addField(`Survival Rate`, avgSurvivalRate, true)
+		.addField(`Kills Per Game`, avgFrag, true)
+		.addField(`Damage Per Game`, avgDmg, true)
+		.addField(`Last Battle`, user.lastBattle, true)
+		.setColor(RGB)
+		.setFooter(`${user.treesCut} trees cut`)
+		.setTimestamp();
+
+	// send the embed
+	message.channel.send({ embed: wotStats });
+}
+
+function formatPercentages(number) {
+	return `${fixToTwo(number)}%`;
+}
+
+function fixToTwo(number) {
+	return number.toFixed(2);
 }
 
 function serializeWn8(wn8Value) {
-	var expFrag = wn8Value.expFrag;
-	var expDamage = wn8Value.expDamage;
-	var expSpot = wn8Value.expSpot;
-	var expDef = wn8Value.expDef;
-	var expWinRate = wn8Value.expWinRate;
+	const expFrag = wn8Value.expFrag;
+	const expDamage = wn8Value.expDamage;
+	const expSpot = wn8Value.expSpot;
+	const expDef = wn8Value.expDef;
+	const expWinRate = wn8Value.expWinRate;
 
-	var wn8Obj = {expFrag: expFrag, expDamage: expDamage, expSpot: expSpot, expDef: expDef, expWinRate: expWinRate};
+	const wn8Obj = {expFrag: expFrag, expDamage: expDamage, expSpot: expSpot, expDef: expDef, expWinRate: expWinRate};
 
 	return wn8Obj;
 }
 
 // Log the bot in using our token: https://discordapp.com/developers/applications/me/408384681004761108
-client.login(config.token);
+client.login(config.token).catch((error) => {
+	console.log("ERROR: cannot connect to Discord server...");
+});
