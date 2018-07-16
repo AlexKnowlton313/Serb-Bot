@@ -1,15 +1,20 @@
 const { WorldOfTanks } = require('wargamer');
 const Discord = require('discord.js');
-const config = require("./config.json");
 const request = require('request');
 const wotUser = require("./wotUser.js");
 
-// Import discord.js module
+// Set where we get local vars
+let env = process.env;
+
+const fs = require('fs');
+if (fs.existsSync("./config.json")) {
+	env = require("./config.json");
+}
 
 // Create instance of Discord client
 const client = new Discord.Client();
 // Create instance of wot
-const wot = new WorldOfTanks({realm: 'na', applicationId: config.WotID});
+const wot = new WorldOfTanks({realm: 'na', applicationId: env.WotID});
 
 // WN8 values in a dictionary
 const wn8Values = {};
@@ -36,10 +41,10 @@ client.on('ready', () => {
 // Listener for messages
 client.on('message', message => {
 	// if our message doesn't start with '!' then do nothing
-	if (!message.content.startsWith(config.prefix) || message.author.bot) return;
+	if (!message.content.startsWith(env.prefix) || message.author.bot) return;
 
 	// separate our message into command and args
-	const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+	const args = message.content.slice(env.prefix.length).trim().split(/ +/g);
 	const command = args.shift().toLowerCase();
 
 	// Check stats command. return if there are no args
@@ -140,6 +145,6 @@ function serializeWn8(wn8Value) {
 }
 
 // Log the bot in using our token: https://discordapp.com/developers/applications/me/408384681004761108
-client.login(config.token).catch((error) => {
+client.login(env.token).catch((error) => {
 	console.log("ERROR: cannot connect to Discord server...");
 });

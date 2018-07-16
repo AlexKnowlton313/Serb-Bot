@@ -1,6 +1,6 @@
 {
   "name": "Serb-Bot",
-  "description": "",
+  "description": "A general purpose Discord bot written in discord.js -- a node.js module.",
   "scripts": {
   },
   "env": {
