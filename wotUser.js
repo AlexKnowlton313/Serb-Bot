@@ -1,3 +1,5 @@
+const Discord = require('discord.js');
+
 class wotUser {
 	constructor(userName) {
 		this.userName = userName;
@@ -87,6 +89,54 @@ class wotUser {
 
 		this.WN8 = 980 * rDAMAGEc + 210 * rDAMAGEc * rFRAGc + 155 * rFRAGc * rSPOTc + 75 * rDEFc * rFRAGc + 145 * Math.min(1.8, rWINc);
 	}
+
+	sendStatistics(message) {
+		const WN8 = fixToTwo(this.WN8);
+		const avgWinRate = formatPercentages(this.avgWinRate);
+		const avgSurvivalRate = formatPercentages(this.avgSurvivalRate);
+		const avgFrag = fixToTwo(this.avgFrag);
+		const avgDmg = fixToTwo(this.avgDmg);
+
+		let RGB = [];
+
+		if (WN8 < 300) { RGB = [145, 15, 20]; } else
+		if (WN8 < 449) { RGB = [203, 53, 56]; } else
+		if (WN8 < 649) { RGB = [202, 121, 29]; } else
+		if (WN8 < 899) { RGB = [203, 183, 39]; } else
+		if (WN8 < 1199) { RGB = [132, 154, 47]; } else
+		if (WN8 < 1599) { RGB = [78, 114, 43]; } else
+		if (WN8 < 1999) { RGB = [68, 153, 189]; } else
+		if (WN8 < 2449) { RGB = [60, 116, 196]; } else
+		if (WN8 < 2899) { RGB = [120, 66, 180]; } else
+		{ RGB = [64, 22, 110]; }
+
+		// rich embed that we send
+		const wotStats = new Discord.RichEmbed()
+			.setAuthor(`Stats for ${this.userName}:`)
+			.addField(`-----------------------`, `-----------------------`, true)
+			.addField(`WN8`, WN8, true)
+			.addField(`-----------------------`, `-----------------------`, true)
+			.addField(`Total Games Played`, this.gamesPlayed, true)
+			.addField(`Win Rate`, avgWinRate, true)
+			.addField(`Survival Rate`, avgSurvivalRate, true)
+			.addField(`Kills Per Game`, avgFrag, true)
+			.addField(`Damage Per Game`, avgDmg, true)
+			.addField(`Last Battle`, this.lastBattle, true)
+			.setColor(RGB)
+			.setFooter(`${this.treesCut} trees cut`)
+			.setTimestamp();
+
+		// send the embed
+		message.channel.send({ embed: wotStats });
+	}
+}
+
+function formatPercentages(number) {
+	return `${fixToTwo(number)}%`;
+}
+
+function fixToTwo(number) {
+	return number.toFixed(2);
 }
 
 // date formatter

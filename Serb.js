@@ -79,7 +79,7 @@ client.on('message', message => {
 						message.reply(`Wargaming's API had a hiccup, try again!`);
 					} else {
 						user.calculateWN8();
-						sendStatisticsMessageForUser(user, message);
+						user.sendStatistics(message);
 					}
 				});
 			}).catch((error) => {
@@ -125,54 +125,6 @@ client.on('guildMemeberAdd', member => {
 	// set the role
 	member.addRole(proletarianRole).catch(console.error);
 })
-
-function sendStatisticsMessageForUser(user, message) {
-	const WN8 = fixToTwo(user.WN8);
-	const avgWinRate = formatPercentages(user.avgWinRate);
-	const avgSurvivalRate = formatPercentages(user.avgSurvivalRate);
-	const avgFrag = fixToTwo(user.avgFrag);
-	const avgDmg = fixToTwo(user.avgDmg);
-
-	let RGB = [];
-
-	if (WN8 < 300) { RGB = [145, 15, 20]; } else
-	if (WN8 < 449) { RGB = [203, 53, 56]; } else
-	if (WN8 < 649) { RGB = [202, 121, 29]; } else
-	if (WN8 < 899) { RGB = [203, 183, 39]; } else
-	if (WN8 < 1199) { RGB = [132, 154, 47]; } else
-	if (WN8 < 1599) { RGB = [78, 114, 43]; } else
-	if (WN8 < 1999) { RGB = [68, 153, 189]; } else
-	if (WN8 < 2449) { RGB = [60, 116, 196]; } else
-	if (WN8 < 2899) { RGB = [120, 66, 180]; } else
-	{ RGB = [64, 22, 110]; }
-
-	// rich embed that we send
-	const wotStats = new Discord.RichEmbed()
-		.setAuthor(`Stats for ${user.userName}:`)
-		.addField(`-----------------------`, `-----------------------`, true)
-		.addField(`WN8`, WN8, true)
-		.addField(`-----------------------`, `-----------------------`, true)
-		.addField(`Total Games Played`, user.gamesPlayed, true)
-		.addField(`Win Rate`, avgWinRate, true)
-		.addField(`Survival Rate`, avgSurvivalRate, true)
-		.addField(`Kills Per Game`, avgFrag, true)
-		.addField(`Damage Per Game`, avgDmg, true)
-		.addField(`Last Battle`, user.lastBattle, true)
-		.setColor(RGB)
-		.setFooter(`${user.treesCut} trees cut`)
-		.setTimestamp();
-
-	// send the embed
-	message.channel.send({ embed: wotStats });
-}
-
-function formatPercentages(number) {
-	return `${fixToTwo(number)}%`;
-}
-
-function fixToTwo(number) {
-	return number.toFixed(2);
-}
 
 function serializeWn8(wn8Value) {
 	const expFrag = wn8Value.expFrag;
