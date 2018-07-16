@@ -1,7 +1,7 @@
 const { WorldOfTanks } = require('wargamer');
 const Discord = require('discord.js');
 const request = require('request');
-const wotUser = require("./wotUser.js");
+const wotUser = require("./wotuser.js");
 
 // Set where we get local vars
 let env = process.env;
@@ -12,11 +12,11 @@ if (fs.existsSync("./config.json")) {
 }
 
 // Fix for Heroku
-var http = require('http'); 
+const http = require('http'); 
 http.createServer(function (req, res) { 
 	res.writeHead(200, {'Content-Type': 'text/plain'}); 
 	res.send('it is running\n'); 
-}).listen(process.env.PORT || 5000);
+}).listen(env.PORT || 5000);
 
 // Create instance of Discord client
 const client = new Discord.Client();
