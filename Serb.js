@@ -95,6 +95,7 @@ client.on('message', message => {
 		// only users with the kick members permission may kick members
 		if (message.guild.me.hasPermission("KICK_MEMBERS")) {
 			const kickMember = message.mentions.members.first();
+			console.log(kickMember)
 
 			// if no member is mentioned
 			if (!kickMember) {
