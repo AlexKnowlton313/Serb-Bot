@@ -1,0 +1,31 @@
+{
+  "name": "Serb-Bot",
+  "description": "",
+  "scripts": {
+  },
+  "env": {
+    "OwnerID": {
+      "required": true
+    },
+    "prefix": "!",
+    "token": {
+      "required": true
+    },
+    "WotID": {
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "addons": [
+
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
